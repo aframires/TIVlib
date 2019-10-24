@@ -54,6 +54,7 @@ class TIV:
          0.405495 + -1.54629j, 0.134035 + 2.91888e-06j],
         [0.0780164 + 0.0254243j, 0.359153 + 0.477187j, -0.7976 + 0.102925j, 0.122824 + 0.423949j, -1.12431 + 1.13637j,
          -0.134035 + -8.33809e-06j]]
+
     temperley_profiles = [
         [0.351315 + -0.829121j, -0.403439 + -2.2347j, -0.876702 + 0.432092j, -1.3074 + 1.75911j, 3.82005 + 5.50107j,
          0.829455 + -9.12661e-06j],
@@ -103,29 +104,34 @@ class TIV:
          -0.307674 + 2.23251e-06j],
         [0.0959573 + -0.170162j, 2.08664 + 0.104772j, -2.07317 + 0.866348j, -1.09396 + -0.274952j, -2.85592 + 2.59045j,
          0.307674 + -3.2962e-06j]]
+
     key_labels = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B', 'c', 'db', 'd', 'eb', 'e', 'f', 'gb',
                   'g', 'ab', 'a', 'bb', 'b']
 
-    def __init__(self,energy,vector):
+    def __init__(self, energy, vector):
         self.energy = energy
         self.vector = vector
 
     @classmethod
     def from_pcp(cls,pcp):
         fft = np.fft.fft(pcp,16)
-        energy = fft[7]
-        vector = fft[8:15]
-        vector = (vector * cls.weights) / energy
-        return cls(energy,vector)
+        energy = fft[8]
+        vector = fft[9:15]
+        vector = ((vector / np.sum(vector)) * cls.weights)
+        return cls(energy, vector)
+
 
 def phases(tiv):
-  return np.angle(tiv.vector)
+    return np.angle(tiv.vector)
+
 
 def dissonance(tiv):
-  return 1 - (np.linalg.norm(tiv.vector)/np.sqrt(np.sum(np.dot(tiv.weights,tiv.weights))))
+    return 1 - (np.linalg.norm(tiv.vector)/np.sqrt(np.sum(np.dot(tiv.weights, tiv.weights))))
+
 
 def combine(tiv1, tiv2):
-    return (tiv1.energy * tiv1.vector + tiv2.energy * tiv2.vector) / (tiv1.energy + tiv2.energy)
+    return TIV(tiv1.energy+tiv2.energy, (tiv1.energy * tiv1.vector + tiv2.energy * tiv2.vector) / (tiv1.energy + tiv2.energy))
+
 
 def key(tiv, mode='temperley'):
     if mode == 'temperley':
@@ -135,11 +141,11 @@ def key(tiv, mode='temperley'):
         profiles = tiv.shaath_profiles
         alpha = 0.2
 
-    alpha_tiv = tiv.vector * alpha
+    alpha_tiv = TIV(0, tiv.vector * alpha)
     distance = []
 
     for profile in profiles:
-        distance.append(distances.euclidean(alpha_tiv, profile))
+        distance.append(distances.euclidean(alpha_tiv, TIV.from_pcp(profile)))
 
     index = np.argmin(distance)
     mode = 'maj'
