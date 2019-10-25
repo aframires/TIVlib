@@ -1,6 +1,8 @@
 import numpy as np
 from TIVlib import distances
 
+from essentia.standard import FFT
+import scipy as sp
 
 class TIV:
 
@@ -114,10 +116,17 @@ class TIV:
 
     @classmethod
     def from_pcp(cls,pcp):
-        fft = np.fft.fft(pcp,16)
-        energy = fft[8]
-        vector = fft[9:15]
-        vector = ((vector / np.sum(vector)) * cls.weights)
+        fft = np.fft.rfft(pcp, n=12)
+        energy = fft[0]
+        vector = fft[1:7]
+
+        #fft = FFT(size=16)
+        #vector = fft(pcp)
+        #energy = vector[0]
+        #vector = vector[1:]
+
+        vector = ((vector / energy) * cls.weights)
+
         return cls(energy, vector)
 
 
@@ -145,7 +154,7 @@ def key(tiv, mode='temperley'):
     distance = []
 
     for profile in profiles:
-        distance.append(distances.euclidean(alpha_tiv, TIV.from_pcp(profile)))
+        distance.append(distances.euclidean(alpha_tiv, TIV(0,profile)))
 
     index = np.argmin(distance)
     mode = 'maj'
