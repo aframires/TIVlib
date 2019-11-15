@@ -159,7 +159,7 @@ def key(tiv, mode='temperley'):
     index = np.argmin(distance)
     mode = 'maj'
 
-    if index > 12:
+    if index >= 12:
         mode = 'min'
 
     guessed_key = tiv.key_labels[index]
