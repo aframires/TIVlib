@@ -10,7 +10,7 @@ The library can be imported with `import TIVlib as tiv`.
 
 Example Code
 -------
-A detailed example on how to use the TIV.lib is available in [example.ipynb](example.ipynb) and in a [Google Colab notebook](https://colab.research.google.com/drive/1QCoOI5Ix9_cekpMDcI7liVIJM--Kg6px) .
+A detailed example on how to use the TIV.lib is available in [TIVlib_example.ipynb](TIVlib_example.ipynb) and in a [Google Colab notebook](https://colab.research.google.com/drive/1QCoOI5Ix9_cekpMDcI7liVIJM--Kg6px) .
 
 We provide here a simple example on how to run some of the feature extractors available in TIV.lib:
 
