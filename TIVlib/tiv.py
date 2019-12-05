@@ -1,8 +1,5 @@
 import numpy as np
-from TIVlib import distances
-
-from essentia.standard import FFT
-import scipy as sp
+import matplotlib.pyplot as plt
 
 class TIV:
 
@@ -119,49 +116,84 @@ class TIV:
         fft = np.fft.rfft(pcp, n=12)
         energy = fft[0]
         vector = fft[1:7]
-
-        #fft = FFT(size=16)
-        #vector = fft(pcp)
-        #energy = vector[0]
-        #vector = vector[1:]
-
         vector = ((vector / energy) * cls.weights)
-
         return cls(energy, vector)
 
+    def phases(self):
+        return np.angle(self.vector)
 
-def phases(tiv):
-    return np.angle(tiv.vector)
+    def dissonance(self):
+        return 1 - (np.linalg.norm(self.vector)/np.sqrt(np.sum(np.dot(self.weights, self.weights))))
 
+    def combine(self, tiv2):
+        return TIV(self.energy+tiv2.energy, (self.energy * self.vector + tiv2.energy * tiv2.vector) / (self.energy + tiv2.energy))
 
-def dissonance(tiv):
-    return 1 - (np.linalg.norm(tiv.vector)/np.sqrt(np.sum(np.dot(tiv.weights, tiv.weights))))
+    def key(self, mode='temperley'):
+        if mode == 'temperley':
+            profiles = self.temperley_profiles
+            alpha = 0.55
+        else:
+            profiles = self.shaath_profiles
+            alpha = 0.2
 
+        alpha_tiv = TIV(0, self.vector * alpha)
+        distance = []
 
-def combine(tiv1, tiv2):
-    return TIV(tiv1.energy+tiv2.energy, (tiv1.energy * tiv1.vector + tiv2.energy * tiv2.vector) / (tiv1.energy + tiv2.energy))
+        for profile in profiles:
+            distance.append(TIV.euclidean(alpha_tiv, TIV(0,profile)))
 
+        index = np.argmin(distance)
+        mode = 'maj'
 
-def key(tiv, mode='temperley'):
-    if mode == 'temperley':
-        profiles = tiv.temperley_profiles
-        alpha = 0.55
-    else:
-        profiles = tiv.shaath_profiles
-        alpha = 0.2
+        if index >= 12:
+            mode = 'min'
 
-    alpha_tiv = TIV(0, tiv.vector * alpha)
-    distance = []
+        guessed_key = self.key_labels[index]
+        return guessed_key, mode
 
-    for profile in profiles:
-        distance.append(distances.euclidean(alpha_tiv, TIV(0,profile)))
+    def mags(self):
+        return np.abs(self.vector)
 
-    index = np.argmin(distance)
-    mode = 'maj'
+    def diatonicity(self):
+        return self.mags()[4] / self.weights[4]
 
-    if index >= 12:
-        mode = 'min'
+    def wholetoneness(self):
+        return self.mags()[5] / self.weights[5]
 
-    guessed_key = tiv.key_labels[index]
+    def chromaticity(self):
+        return self.mags()[0] / self.weights[0]
 
-    return guessed_key, mode
+    def plot_tiv(self):
+        titles = ["m2/M7", "TT", "M3/m6", "m3/M6", "P4/P5", "M2/m7"]
+        tivs_vector = self.vector / self.weights
+        i = 1
+        for tiv in tivs_vector:
+            circle = plt.Circle((0, 0), 1, fill=False)
+            plt.subplot(2, 3, i)
+            plt.subplots_adjust(hspace=0.4)
+            plt.gca().add_patch(circle)
+            plt.title(titles[i - 1])
+            plt.scatter(tiv.real, tiv.imag)
+            plt.xlim((-1.5, 1.5))
+            plt.ylim((-1.5, 1.5))
+            plt.grid()
+            i = i + 1
+        plt.show()
+
+    def hchange(self):
+        tiv_array = self.vector
+        results = []
+        for i in range(len(tiv_array)):
+            distance = TIV.euclidean(tiv_array[i + 1], tiv_array[i])
+            results.append(distance)
+        return results
+
+    @classmethod
+    def euclidean(cls, tiv1, tiv2):
+        return np.linalg.norm(tiv1.vector - tiv2.vector)
+
+    @classmethod
+    def cosine(cls, tiv1, tiv2):
+        tiv1_split = np.concatenate((tiv1.vector.real, tiv1.vector.imag), axis=0)
+        tiv2_split = np.concatenate((tiv1.vector.real, tiv1.vector.imag), axis=0)
+        return np.arccos(np.dot(tiv1_split, tiv2_split) / (np.linalg.norm(tiv1.vector) * np.linalg.norm(tiv2.vector)))
