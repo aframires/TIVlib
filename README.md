@@ -15,14 +15,14 @@ A detailed example on how to use the TIV.lib is available in [TIVlib_example.ipy
 We provide here a simple example on how to run some of the feature extractors available in TIV.lib:
 
 ```python
-import TIVlib as tiv
+from TIVlib import TIV as tiv
 metal = "./audio_files/metal.wav"
 metal_hpcp = file_to_hpcp(metal)
-metal_tiv = tiv.TIV.from_pcp(metal_hpcp)
-print("tiv.mag: " + str(tiv.mag.mags(glass_tiv)))
-print("tiv.diatonicity: " + str(tiv.mag.diatonicity(glass_tiv)))
-print("tiv.chromacity: " + str(tiv.mag.chromaticity(glass_tiv)))
-print("tiv.dissonance: " + str(tiv.dissonance(glass_tiv)))
+metal_tiv = tiv.from_pcp(metal_hpcp)
+print("tiv.mag: " + str(glass_tiv.mags()))
+print("tiv.diatonicity: " + str(glass_tiv.diatonicity()))
+print("tiv.chromacity: " + str(glass_tiv.chromaticity()))
+print("tiv.dissonance: " + str(glass_tiv.dissonance()))
 
 ```
 
