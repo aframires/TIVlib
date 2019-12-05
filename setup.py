@@ -26,4 +26,4 @@ opts = dict(name=NAME,
 
 
 if __name__ == '__main__':
-    setup(**opts, install_requires=['numpy', 'essentia', 'scipy', 'matplotlib'])
+    setup(**opts, install_requires=['numpy', 'scipy', 'matplotlib'])
