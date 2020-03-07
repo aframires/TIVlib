@@ -182,6 +182,18 @@ class TIV:
         plt.show()
 
     def transpose(self, n_semitones, inplace=False):
+        n = 12
+        transposed_vector = np.zeros(6)
+        for interval in range(len(self.vector)):
+            mod = np.abs(self.vector[interval])
+            phase = np.angle(self.vector[interval])
+            phase_transposition = 2*np.pi*(interval+1)*n_semitones/n
+            new_phase = phase + phase_transposition
+            transposed_vector[interval] = mod*np.exp(-np.imag*new_phase)
+        if inplace:
+            self.vector = transposed_vector
+        else:
+            return transposed_vector
 
 
     def hchange(self):
