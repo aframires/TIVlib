@@ -116,7 +116,8 @@ class TIV:
         fft = np.fft.rfft(pcp, n=12)
         energy = fft[0]
         vector = fft[1:7]
-        vector = ((vector / energy) * cls.weights)
+        if energy != 0:
+            vector = ((vector / energy) * cls.weights)
         return cls(energy, vector)
 
     def phases(self):
@@ -179,6 +180,9 @@ class TIV:
             plt.grid()
             i = i + 1
         plt.show()
+
+    def transpose(self, n_semitones, inplace=False):
+
 
     def hchange(self):
         tiv_array = self.vector
