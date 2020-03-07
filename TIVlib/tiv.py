@@ -164,7 +164,7 @@ class TIV:
     def chromaticity(self):
         return self.mags()[0] / self.weights[0]
 
-    def plot_tiv(self):
+    def plot_tiv(self, title=None):
         titles = ["m2/M7", "TT", "M3/m6", "m3/M6", "P4/P5", "M2/m7"]
         tivs_vector = self.vector / self.weights
         i = 1
@@ -179,21 +179,23 @@ class TIV:
             plt.ylim((-1.5, 1.5))
             plt.grid()
             i = i + 1
+        if title is not None:
+            plt.gcf().suptitle(title)
         plt.show()
 
     def transpose(self, n_semitones, inplace=False):
         n = 12
-        transposed_vector = np.zeros(6)
+        transposed_vector = np.zeros(6, dtype=np.complex)
         for interval in range(len(self.vector)):
             mod = np.abs(self.vector[interval])
-            phase = np.angle(self.vector[interval])
-            phase_transposition = 2*np.pi*(interval+1)*n_semitones/n
+            phase = 1j*np.angle(self.vector[interval])
+            phase_transposition = -2j*np.pi*(interval+1)*n_semitones/n
             new_phase = phase + phase_transposition
-            transposed_vector[interval] = mod*np.exp(-np.imag*new_phase)
+            transposed_vector[interval] = mod*np.exp(new_phase)
         if inplace:
             self.vector = transposed_vector
         else:
-            return transposed_vector
+            return TIV(self.energy, transposed_vector)
 
 
     def hchange(self):
