@@ -111,12 +111,28 @@ class TIV:
         self.energy = energy
         self.vector = vector
 
+    def __add__(self, other):
+        return self.combine(other)
+
+    def __eq__(self, other):
+        if np.array_equal(self.vector, other.vector):
+            return True
+        else:
+            return False
+
+    def __repr__(self):
+        return "TIV object"
+
+    def __str__(self):
+        return self.vector, self.energy
+
     @classmethod
-    def from_pcp(cls,pcp):
+    def from_pcp(cls, pcp):
         fft = np.fft.rfft(pcp, n=12)
         energy = fft[0]
         vector = fft[1:7]
-        vector = ((vector / energy) * cls.weights)
+        if energy != 0:
+            vector = ((vector / energy) * cls.weights)
         return cls(energy, vector)
 
     def phases(self):
@@ -163,7 +179,12 @@ class TIV:
     def chromaticity(self):
         return self.mags()[0] / self.weights[0]
 
-    def plot_tiv(self):
+    def plot_tiv(self, title=None):
+        """
+        Plot the TIV normalised vector inside circles
+        :param title: Optional title for the plotted figure
+        :return: None
+        """
         titles = ["m2/M7", "TT", "M3/m6", "m3/M6", "P4/P5", "M2/m7"]
         tivs_vector = self.vector / self.weights
         i = 1
@@ -178,7 +199,63 @@ class TIV:
             plt.ylim((-1.5, 1.5))
             plt.grid()
             i = i + 1
+        if title is not None:
+            plt.gcf().suptitle(title)
         plt.show()
+
+    def transpose(self, n_semitones, inplace=False):
+        """
+        Transpose the actual TIV by n semitones
+        :param n_semitones: number of semitones to transpose (negative or positive)
+        :param inplace: True to shift the actual TIV object. False to return a copy of the shifted TIV version
+        :return: Shifted TIV version, or None
+        """
+        if n_semitones == 0:
+            return self
+        n = 12
+        transposed_vector = np.zeros(6, dtype=np.complex128)
+        for interval in range(len(self.vector)):
+            mod = np.abs(self.vector[interval])
+            phase = 1j*np.angle(self.vector[interval])
+            phase_transposition = -2j*np.pi*(interval+1)*n_semitones/n
+            new_phase = phase + phase_transposition
+            transposed_vector[interval] = mod*np.exp(new_phase)
+        if inplace:
+            self.vector = transposed_vector
+        else:
+            return TIV(self.energy, transposed_vector)
+
+    def small_scale_compatibility(self, cand_TIV):
+        """
+        Small scale compatibility between the actual TIV and the candidate TIV as defined in:
+            Gilberto Bernardes, Diogo Cocharro, Marcelo Caetano, Carlos Guedes & Matthew E.P. Davies (2016)
+            A multi-level tonal interval space for modelling pitch relatedness and musical consonance,
+            Journal of New Music Research, 45:4, 281-294, DOI: 10.1080/09298215.2016.1182192
+        :param cand_TIV: Candidate TIV object
+        :return: The small scale compatibility
+        """
+        mixed_TIV = self.combine(cand_TIV)
+        dissonance = mixed_TIV.dissonance()
+        relatedness = TIV.euclidean(self, cand_TIV)
+        dissonance_norm = dissonance
+        relatedness_norm = relatedness / np.linalg.norm(self.weights)
+        return dissonance_norm * relatedness_norm
+
+    def get_max_compatibility(self, tiv2):
+        """
+        Return the number of pitch shifts semitones that applied to tiv2 returns the maximum small scale compatibility.
+        :param tiv2: The other tiv2 to compare to.
+        :return: Number of pitch shifts to apply, small scale compatibility for that pitch shift.
+        """
+        tiv_tranpositions = []
+        dissonances = []
+        for tranposition in range(-6, 6):
+            tiv_tranpositions.append(tiv2.transpose(tranposition))
+        for tiv_tranposition in tiv_tranpositions:
+            dissonances.append(self.small_scale_compatibility(tiv_tranposition))
+        dissonances = np.array(dissonances)
+        pitch_shift = np.argmin(dissonances) - 6
+        return pitch_shift, min(dissonances)
 
     def hchange(self):
         tiv_array = self.vector
