@@ -237,8 +237,8 @@ class TIV:
         mixed_TIV = self.combine(cand_TIV)
         dissonance = mixed_TIV.dissonance()
         relatedness = TIV.euclidean(self, cand_TIV)
-        dissonance_norm = dissonance
-        relatedness_norm = relatedness / np.linalg.norm(self.weights)
+        dissonance_norm = 1 - (np.linalg.norm((self.vector + cand_TIV.vector)/2)/np.linalg.norm(self.weights))
+        relatedness_norm = relatedness / (np.linalg.norm(self.weights)*2)
         return dissonance_norm * relatedness_norm
 
     def get_max_compatibility(self, tiv2):
