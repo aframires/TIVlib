@@ -203,6 +203,7 @@ class TIV:
             plt.gcf().suptitle(title)
         plt.show()
 
+
     def transpose(self, n_semitones, inplace=False):
         """
         Transpose the actual TIV by n semitones
@@ -212,32 +213,30 @@ class TIV:
         """
         if n_semitones == 0:
             return self
-        n = 12
-        transposed_vector = np.zeros(6, dtype=np.complex128)
-        for interval in range(len(self.vector)):
-            mod = np.abs(self.vector[interval])
-            phase = 1j*np.angle(self.vector[interval])
-            phase_transposition = -2j*np.pi*(interval+1)*n_semitones/n
-            new_phase = phase + phase_transposition
-            transposed_vector[interval] = mod*np.exp(new_phase)
+        transpositions = self.get_12_transposes()
+        transposition_desired = transpositions[n_semitones]
         if inplace:
-            self.vector = transposed_vector
+            self.vector = transposition_desired.vector
+            self.energy = transposition_desired.energy
         else:
-            return TIV(self.energy, transposed_vector)
+            return transposition_desired
 
 
     def get_12_transposes(self):
         """
-        Get all 12 possible tranpositions of the vector
-        :return: list contaning the 12 transpositions
+        Get all 12 possible transpositions of the vector
+        :return: list containing the 12 transpositions
         """
         n = 12
+        mod = np.abs(self.vector)
+        phase = 1j * np.angle(self.vector)
         matmul = -2j * np.pi * (np.ones((6, 12), dtype=np.float64) * np.arange(12))
         semitones = np.arange(1, 7)
         semitones = semitones[:, np.newaxis]
-        transposing_multiplication = semitones * matmul / n
-        tranposed_vector = transposing_multiplication * self.vector[:, np.newaxis]
-        return [TIV(self.energy, tranposed_vector[:, i]) for i in range(12)]
+        phase_transposition = semitones * matmul / n  # 12 phase transpositions for each interval
+        transposed_phase = phase_transposition + phase[:, np.newaxis]
+        transposed_vector = mod[:, np.newaxis] * np.exp(transposed_phase)
+        return [TIV(self.energy, transposed_vector[:, i]) for i in range(12)]
 
 
     def small_scale_compatibility(self, cand_TIV):
@@ -267,7 +266,9 @@ class TIV:
         for tiv_tranposition in tiv_tranpositions:
             dissonances.append(self.small_scale_compatibility(tiv_tranposition))
         dissonances = np.array(dissonances)
-        pitch_shift = np.argmin(dissonances) - 6
+        pitch_shift = np.argmin(dissonances)
+        if pitch_shift > 5:
+            pitch_shift = pitch_shift - 12
         return pitch_shift, min(dissonances)
 
     def hchange(self):
