@@ -225,6 +225,21 @@ class TIV:
         else:
             return TIV(self.energy, transposed_vector)
 
+
+    def get_12_transposes(self):
+        """
+        Get all 12 possible tranpositions of the vector
+        :return: list contaning the 12 transpositions
+        """
+        n = 12
+        matmul = -2j * np.pi * (np.ones((6, 12), dtype=np.float64) * np.arange(12))
+        semitones = np.arange(1, 7)
+        semitones = semitones[:, np.newaxis]
+        transposing_multiplication = semitones * matmul / n
+        tranposed_vector = transposing_multiplication * self.vector[:, np.newaxis]
+        return [TIV(self.energy, tranposed_vector[:, i]) for i in range(12)]
+
+
     def small_scale_compatibility(self, cand_TIV):
         """
         Small scale compatibility between the actual TIV and the candidate TIV as defined in:
@@ -247,10 +262,8 @@ class TIV:
         :param tiv2: The other tiv2 to compare to.
         :return: Number of pitch shifts to apply, small scale compatibility for that pitch shift.
         """
-        tiv_tranpositions = []
+        tiv_tranpositions = tiv2.get_12_transposes()
         dissonances = []
-        for tranposition in range(-6, 6):
-            tiv_tranpositions.append(tiv2.transpose(tranposition))
         for tiv_tranposition in tiv_tranpositions:
             dissonances.append(self.small_scale_compatibility(tiv_tranposition))
         dissonances = np.array(dissonances)
