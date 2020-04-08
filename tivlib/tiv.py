@@ -1,6 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+epsilon = np.finfo(float).eps
+
 class TIV:
 
     weights = [3, 8, 11.5, 15, 14.5, 7.5]
@@ -288,3 +290,30 @@ class TIV:
         tiv1_split = np.concatenate((tiv1.vector.real, tiv1.vector.imag), axis=0)
         tiv2_split = np.concatenate((tiv2.vector.real, tiv2.vector.imag), axis=0)
         return np.arccos(np.dot(tiv1_split, tiv2_split) / (np.linalg.norm(tiv1.vector) * np.linalg.norm(tiv2.vector)))
+
+class TIVCollection(TIV):
+    """
+    Class to handle lists of TIV. To handle with ease compatibility between audio excerpts
+    """
+    def __init__(self, tivlist):
+        """
+        The constructor of the class. Takes a list of TIV vectors
+        :param tivlist: A list containing all the tivs of an audio
+        """
+        if not all([isinstance(tivi, TIV) for tivi in tivlist]):
+            raise TypeError("Some element in the list is not a TIV object")
+        self.tivlist = tivlist
+
+    def __repr__(self):
+        return "TIVCollection (%s tivs)" % len(self.tivlist)
+
+    def __str__(self):
+        return self.tivlist
+
+    @classmethod
+    def from_pcp(cls, pcp):
+        fft = np.fft.rfft(pcp, n=12, axis=0)
+        energy = fft[0, :] + epsilon
+        vector = fft[1:7, :]
+        vector = ((vector / energy) * np.array(cls.weights)[:, np.newaxis])
+        return cls([TIV(energy[i], vector[i]) for i in range(len(energy))])
