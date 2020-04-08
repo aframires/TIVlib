@@ -291,6 +291,7 @@ class TIV:
         tiv2_split = np.concatenate((tiv2.vector.real, tiv2.vector.imag), axis=0)
         return np.arccos(np.dot(tiv1_split, tiv2_split) / (np.linalg.norm(tiv1.vector) * np.linalg.norm(tiv2.vector)))
 
+
 class TIVCollection(TIV):
     """
     Class to handle lists of TIV. To handle with ease compatibility between audio excerpts
@@ -303,6 +304,8 @@ class TIVCollection(TIV):
         if not all([isinstance(tivi, TIV) for tivi in tivlist]):
             raise TypeError("Some element in the list is not a TIV object")
         self.tivlist = tivlist
+        self.energies = np.array([i.energy for i in tivlist])
+        self.vectors = np.array([i.vector for i in tivlist])
 
     def __repr__(self):
         return "TIVCollection (%s tivs)" % len(self.tivlist)
@@ -316,4 +319,9 @@ class TIVCollection(TIV):
         energy = fft[0, :] + epsilon
         vector = fft[1:7, :]
         vector = ((vector / energy) * np.array(cls.weights)[:, np.newaxis])
-        return cls([TIV(energy[i], vector[i]) for i in range(len(energy))])
+        return cls([TIV(energy[i], vector[:, i]) for i in range(len(energy))])
+
+    def all_transpositions(self):
+        #TODO: Efficient way to calculate all tranpositions for all tivs
+        pass
+
