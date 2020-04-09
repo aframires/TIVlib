@@ -307,6 +307,9 @@ class TIVCollection(TIV):
         self.energies = np.array([i.energy for i in tivlist])
         self.vectors = np.array([i.vector for i in tivlist])
 
+    def __getitem__(self, item):
+        return self.tivlist[item]
+
     def __repr__(self):
         return "TIVCollection (%s tivs)" % len(self.tivlist)
 
@@ -321,7 +324,22 @@ class TIVCollection(TIV):
         vector = ((vector / energy) * np.array(cls.weights)[:, np.newaxis])
         return cls([TIV(energy[i], vector[:, i]) for i in range(len(energy))])
 
-    def all_transpositions(self):
-        #TODO: Efficient way to calculate all tranpositions for all tivs
-        pass
+    def get_12_transposes(self):
+        n = 12
+        mod = np.abs(self.vectors)
+        phase = 1j * np.angle(self.vectors)
+        matmul = -2j * np.pi * (np.arange(12)[:, np.newaxis] * np.ones((6, 12, len(self.tivlist)), dtype=np.float64))
+        matmul = np.transpose(matmul, axes=(2, 0, 1))
+        semitones = np.arange(1, 7, dtype=np.float64)
+        semitones = semitones[:, np.newaxis]
+        phase_transposition = semitones * matmul / n
+        new_phase = phase[:, :, np.newaxis] + phase_transposition
+        new_vectors = mod[:, :, np.newaxis] * np.exp(new_phase)
+        tivlists = []  # Will be length 12 containing all the 12 pitch shifts.
+        for shift in range(n):
+            set_tivs = []  # Aux variable to hold the set of tivs for this shift
+            for tiv in range(len(self.energies)):
+                set_tivs.append(TIV(self.energies[tiv], new_vectors[tiv, :, shift]))
+            tivlists.append(TIVCollection(set_tivs))
+        return tivlists
 
