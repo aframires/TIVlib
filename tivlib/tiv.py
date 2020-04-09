@@ -318,6 +318,13 @@ class TIVCollection(TIV):
 
     @classmethod
     def from_pcp(cls, pcp):
+        """
+        Get TIVs from pcp, as the original method
+        :param pcp: 12xN vector containing N pcps
+        :return: TIVCollection object
+        """
+        if pcp.shape[0] != 12:
+            raise TypeError("Vector is not compatible with PCP")
         fft = np.fft.rfft(pcp, n=12, axis=0)
         energy = fft[0, :] + epsilon
         vector = fft[1:7, :]
@@ -325,6 +332,10 @@ class TIVCollection(TIV):
         return cls([TIV(energy[i], vector[:, i]) for i in range(len(energy))])
 
     def get_12_transposes(self):
+        """
+        Get all 12 possible transpositions for a TIVCollection
+        :return:List with all 12 possible transpositions [0-11]
+        """
         n = 12
         mod = np.abs(self.vectors)
         phase = 1j * np.angle(self.vectors)
@@ -343,3 +354,31 @@ class TIVCollection(TIV):
             tivlists.append(TIVCollection(set_tivs))
         return tivlists
 
+    def small_scale_compatibility(self, tivcol2):
+        """
+        Calculate small scale compatibility between two TIVCollections
+        :param tivcol2: TIVCollections to compare
+        :return: sum of the small scale harmonic compatibilities of all TIVs in collections
+        """
+        if len(tivcol2.tivlist) != len(self.tivlist):
+            raise ValueError("Compatibility between different TIVCollections sizes are not supported yet")
+        h_comps = np.zeros(len(tivcol2.tivlist))
+        for idx in range(len(tivcol2.tivlist)):
+            h_comps[idx] = self.tivlist[idx].small_scale_compatibility(tivcol2[idx])
+        return np.sum(h_comps)
+
+    def get_max_compatibility(self, tivcol2):
+        """
+        Get the pitch shift that minimizes the small scale compatibility measure
+        :param tivcol2: TIVCollection object to compare against
+        :return: A tuple containing pitch shift and small scale compatibility
+        """
+        tiv2transposes = tivcol2.get_12_transposes()
+        compatibilities = np.zeros(12)
+        for idx, transpose in enumerate(tiv2transposes):
+            compatibilities[idx] = self.small_scale_compatibility(transpose)
+
+        pitch_shift = np.argmin(compatibilities)
+        if pitch_shift > 5:
+            pitch_shift = pitch_shift - 12
+        return pitch_shift, np.min(compatibilities)
