@@ -326,6 +326,8 @@ class TIVCollection(TIV):
         if pcp.shape[0] != 12:
             raise TypeError("Vector is not compatible with PCP")
         fft = np.fft.rfft(pcp, n=12, axis=0)
+        if fft.ndim == 1:
+            fft = fft[:, np.newaxis]
         energy = fft[0, :] + epsilon
         vector = fft[1:7, :]
         vector = ((vector / energy) * np.array(cls.weights)[:, np.newaxis])
