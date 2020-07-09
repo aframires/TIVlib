@@ -37,4 +37,4 @@ António Ramires
 aframires@gmail.com
 
 Gilberto Bernardes
-gba@feup.pt
+gba@fe.up.pt
