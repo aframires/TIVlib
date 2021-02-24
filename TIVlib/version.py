@@ -30,31 +30,29 @@ description = "TIVlib: a package for learning about OSS in MIR"
 # Long description will go up on the pypi page
 long_description = """
 
-toymir
+TIVlib
 ========
-toymir is a small Python package for use in the ISMIR 2018 tutorial on
-open source software and reproducibility.
-
-It is based on the Shablona_ package, developed by Ariel Rokem at the
-University of Washington eScience Institute.
-
-.. _Shablona: https://github.com/uwescience/shablona
+A python library for the content-based tonal description of musical audio signals, 
+which implements the Tonal Interval Vector space. 
+Its main novelty relies on the DFT-based perceptually-inspired Tonal Interval Vector space, 
+from which multiple instantaneous and global representations, descriptors and metrics are computed---e.g.,
+harmonic changes, dissonance, diatonicity, and musical key.
 """
 
-NAME = "toymir"
-MAINTAINER = "Brian McFee"
-MAINTAINER_EMAIL = "brian.mcfee@nyu.edu"
+NAME = "TIVlib"
+MAINTAINER = "Antonio Ramires"
+MAINTAINER_EMAIL = "aframires@gmail.com"
 DESCRIPTION = description
 LONG_DESCRIPTION = long_description
-URL = "http://github.com/bmcfee/ismir2018-oss-tutorial"
+URL = "http://github.com/aframires/TIVlib"
 DOWNLOAD_URL = ""
 LICENSE = "MIT"
-AUTHOR = "Brian McFee"
-AUTHOR_EMAIL = "brian.mcfee@nyu.edu"
+AUTHOR = "Antonio Ramires"
+AUTHOR_EMAIL = "aframires@gmail.com"
 PLATFORMS = "OS Independent"
 MAJOR = _version_major
 MINOR = _version_minor
 MICRO = _version_micro
 VERSION = __version__
-PACKAGE_DATA = {'toymir': [pjoin('data', '*')]}
+PACKAGE_DATA = {'TIVlib': [pjoin('data', '*')]}
 REQUIRES = ["numpy"]

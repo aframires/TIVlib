@@ -1,6 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+epsilon = np.finfo(float).eps
+
 class TIV:
 
     weights = [3, 8, 11.5, 15, 14.5, 7.5]
@@ -203,6 +205,7 @@ class TIV:
             plt.gcf().suptitle(title)
         plt.show()
 
+
     def transpose(self, n_semitones, inplace=False):
         """
         Transpose the actual TIV by n semitones
@@ -212,18 +215,31 @@ class TIV:
         """
         if n_semitones == 0:
             return self
-        n = 12
-        transposed_vector = np.zeros(6, dtype=np.complex128)
-        for interval in range(len(self.vector)):
-            mod = np.abs(self.vector[interval])
-            phase = 1j*np.angle(self.vector[interval])
-            phase_transposition = -2j*np.pi*(interval+1)*n_semitones/n
-            new_phase = phase + phase_transposition
-            transposed_vector[interval] = mod*np.exp(new_phase)
+        transpositions = self.get_12_transposes()
+        transposition_desired = transpositions[n_semitones]
         if inplace:
-            self.vector = transposed_vector
+            self.vector = transposition_desired.vector
+            self.energy = transposition_desired.energy
         else:
-            return TIV(self.energy, transposed_vector)
+            return transposition_desired
+
+
+    def get_12_transposes(self):
+        """
+        Get all 12 possible transpositions of the vector
+        :return: list containing the 12 transpositions
+        """
+        n = 12
+        mod = np.abs(self.vector)
+        phase = 1j * np.angle(self.vector)
+        matmul = -2j * np.pi * (np.ones((6, 12), dtype=np.float64) * np.arange(12))
+        semitones = np.arange(1, 7)
+        semitones = semitones[:, np.newaxis]
+        phase_transposition = semitones * matmul / n  # 12 phase transpositions for each interval
+        transposed_phase = phase_transposition + phase[:, np.newaxis]
+        transposed_vector = mod[:, np.newaxis] * np.exp(transposed_phase)
+        return [TIV(self.energy, transposed_vector[:, i]) for i in range(12)]
+
 
     def small_scale_compatibility(self, cand_TIV):
         """
@@ -247,14 +263,14 @@ class TIV:
         :param tiv2: The other tiv2 to compare to.
         :return: Number of pitch shifts to apply, small scale compatibility for that pitch shift.
         """
-        tiv_tranpositions = []
+        tiv_tranpositions = tiv2.get_12_transposes()
         dissonances = []
-        for tranposition in range(-6, 6):
-            tiv_tranpositions.append(tiv2.transpose(tranposition))
         for tiv_tranposition in tiv_tranpositions:
             dissonances.append(self.small_scale_compatibility(tiv_tranposition))
         dissonances = np.array(dissonances)
-        pitch_shift = np.argmin(dissonances) - 6
+        pitch_shift = np.argmin(dissonances)
+        if pitch_shift > 5:
+            pitch_shift = pitch_shift - 12
         return pitch_shift, min(dissonances)
 
     def hchange(self):
@@ -274,3 +290,97 @@ class TIV:
         tiv1_split = np.concatenate((tiv1.vector.real, tiv1.vector.imag), axis=0)
         tiv2_split = np.concatenate((tiv2.vector.real, tiv2.vector.imag), axis=0)
         return np.arccos(np.dot(tiv1_split, tiv2_split) / (np.linalg.norm(tiv1.vector) * np.linalg.norm(tiv2.vector)))
+
+
+class TIVCollection(TIV):
+    """
+    Class to handle lists of TIV. To handle with ease compatibility between audio excerpts
+    """
+    def __init__(self, tivlist):
+        """
+        The constructor of the class. Takes a list of TIV vectors
+        :param tivlist: A list containing all the tivs of an audio
+        """
+        if not all([isinstance(tivi, TIV) for tivi in tivlist]):
+            raise TypeError("Some element in the list is not a TIV object")
+        self.tivlist = tivlist
+        self.energies = np.array([i.energy for i in tivlist])
+        self.vectors = np.array([i.vector for i in tivlist])
+
+    def __getitem__(self, item):
+        return self.tivlist[item]
+
+    def __repr__(self):
+        return "TIVCollection (%s tivs)" % len(self.tivlist)
+
+    def __str__(self):
+        return self.tivlist
+
+    @classmethod
+    def from_pcp(cls, pcp):
+        """
+        Get TIVs from pcp, as the original method
+        :param pcp: 12xN vector containing N pcps
+        :return: TIVCollection object
+        """
+        if pcp.shape[0] != 12:
+            raise TypeError("Vector is not compatible with PCP")
+        fft = np.fft.rfft(pcp, n=12, axis=0)
+        if fft.ndim == 1:
+            fft = fft[:, np.newaxis]
+        energy = fft[0, :] + epsilon
+        vector = fft[1:7, :]
+        vector = ((vector / energy) * np.array(cls.weights)[:, np.newaxis])
+        return cls([TIV(energy[i], vector[:, i]) for i in range(len(energy))])
+
+    def get_12_transposes(self):
+        """
+        Get all 12 possible transpositions for a TIVCollection
+        :return:List with all 12 possible transpositions [0-11]
+        """
+        n = 12
+        mod = np.abs(self.vectors)
+        phase = 1j * np.angle(self.vectors)
+        matmul = -2j * np.pi * (np.arange(12)[:, np.newaxis] * np.ones((6, 12, len(self.tivlist)), dtype=np.float64))
+        matmul = np.transpose(matmul, axes=(2, 0, 1))
+        semitones = np.arange(1, 7, dtype=np.float64)
+        semitones = semitones[:, np.newaxis]
+        phase_transposition = semitones * matmul / n
+        new_phase = phase[:, :, np.newaxis] + phase_transposition
+        new_vectors = mod[:, :, np.newaxis] * np.exp(new_phase)
+        tivlists = []  # Will be length 12 containing all the 12 pitch shifts.
+        for shift in range(n):
+            set_tivs = []  # Aux variable to hold the set of tivs for this shift
+            for tiv in range(len(self.energies)):
+                set_tivs.append(TIV(self.energies[tiv], new_vectors[tiv, :, shift]))
+            tivlists.append(TIVCollection(set_tivs))
+        return tivlists
+
+    def small_scale_compatibility(self, tivcol2):
+        """
+        Calculate small scale compatibility between two TIVCollections
+        :param tivcol2: TIVCollections to compare
+        :return: sum of the small scale harmonic compatibilities of all TIVs in collections
+        """
+        if len(tivcol2.tivlist) != len(self.tivlist):
+            raise ValueError("Compatibility between different TIVCollections sizes are not supported yet")
+        h_comps = np.zeros(len(tivcol2.tivlist))
+        for idx in range(len(tivcol2.tivlist)):
+            h_comps[idx] = self.tivlist[idx].small_scale_compatibility(tivcol2[idx])
+        return np.sum(h_comps)
+
+    def get_max_compatibility(self, tivcol2):
+        """
+        Get the pitch shift that minimizes the small scale compatibility measure
+        :param tivcol2: TIVCollection object to compare against
+        :return: A tuple containing pitch shift and small scale compatibility
+        """
+        tiv2transposes = tivcol2.get_12_transposes()
+        compatibilities = np.zeros(12)
+        for idx, transpose in enumerate(tiv2transposes):
+            compatibilities[idx] = self.small_scale_compatibility(transpose)
+
+        pitch_shift = np.argmin(compatibilities)
+        if pitch_shift > 5:
+            pitch_shift = pitch_shift - 12
+        return pitch_shift, np.min(compatibilities)
