@@ -314,7 +314,7 @@ class TIVCollection(TIV):
         return "TIVCollection (%s tivs)" % len(self.tivlist)
 
     def __str__(self):
-        return self.tivlist
+        return self.__repr__()
 
     @classmethod
     def from_pcp(cls, pcp):
