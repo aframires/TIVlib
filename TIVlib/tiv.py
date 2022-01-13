@@ -281,6 +281,29 @@ class TIV:
             results.append(distance)
         return results
 
+    def entropy(self):
+        """
+        Compute the entropy of the TIV as the Shannon entropy of
+        its magnitudes, following Amiot (2020)
+        :return: The entropy of the TIV
+        """
+        mags = self.mags()
+        sum = np.sum(mags)
+
+        normalized_mags = np.divide(
+            mags,
+            sum,
+            out=np.zeros_like(mags),
+            where=sum != 0
+        )
+
+        entr = np.sum(
+            -normalized_mags * np.log(normalized_mags,
+            where=normalized_mags > 0)
+        )
+
+        return entr
+
     @classmethod
     def euclidean(cls, tiv1, tiv2):
         return np.linalg.norm(tiv1.vector - tiv2.vector)
