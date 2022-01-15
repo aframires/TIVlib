@@ -172,14 +172,29 @@ class TIV:
     def mags(self):
         return np.abs(self.vector)
 
-    def diatonicity(self):
-        return self.mags()[4] / self.weights[4]
+    def __coefficient_mag(self, k):
+        if k < 0 or k > 5:
+            raise ValueError('k must be between 0 and 5')
 
-    def wholetoneness(self):
-        return self.mags()[5] / self.weights[5]
+        return self.mags()[k] / self.weights[k]
 
     def chromaticity(self):
-        return self.mags()[0] / self.weights[0]
+        return self.__coefficient_mag(0)
+
+    def dyadicity(self):
+        return self.__coefficient_mag(1)
+
+    def triadicity(self):
+        return self.__coefficient_mag(2)
+
+    def dim_quality(self):
+        return self.__coefficient_mag(3)
+
+    def diatonicity(self):
+        return self.__coefficient_mag(4)
+
+    def wholetoneness(self):
+        return self.__coefficient_mag(5)
 
     def plot_tiv(self, title=None):
         """
@@ -280,6 +295,29 @@ class TIV:
             distance = TIV.euclidean(tiv_array[i + 1], tiv_array[i])
             results.append(distance)
         return results
+
+    def entropy(self):
+        """
+        Compute the entropy of the TIV as the Shannon entropy of
+        its magnitudes, following Amiot (2020)
+        :return: The entropy of the TIV
+        """
+        mags = self.mags()
+        sum = np.sum(mags)
+
+        normalized_mags = np.divide(
+            mags,
+            sum,
+            out=np.zeros_like(mags),
+            where=sum != 0
+        )
+
+        entr = np.sum(
+            -normalized_mags * np.log(normalized_mags,
+            where=normalized_mags > 0)
+        )
+
+        return entr
 
     @classmethod
     def euclidean(cls, tiv1, tiv2):
@@ -384,3 +422,47 @@ class TIVCollection(TIV):
         if pitch_shift > 5:
             pitch_shift = pitch_shift - 12
         return pitch_shift, np.min(compatibilities)
+
+    def tonal_dispersion(self, distance_type="euclidean"):
+        """
+        Compute distance to the tonal center TIV of each TIV in the collection.
+        :param distance_type: Type of distance metric to use. Possible values
+        are 'euclidean' and 'cosine'. Defaults to 'euclidean'.
+        :return: An array containing the tonal dispersion of each TIV.
+        """
+        tonal_center = np.mean(self.vectors, axis=0)
+        tonal_center = TIV(1, tonal_center)
+
+        tonal_disp = np.zeros(len(self.tivlist))
+
+        for idx, tiv in enumerate(self.tivlist):
+            if distance_type == "euclidean":
+                tonal_disp[idx] = TIV.euclidean(tiv, tonal_center)
+            elif distance_type == "cosine":
+                if np.any(tiv.vector) and np.any(tonal_center.vector):
+                    tonal_disp[idx] = TIV.cosine(tiv, tonal_center)
+
+        return tonal_disp
+
+    def inter_frame_distance(self, distance_type="euclidean"):
+        """
+        Compute the inter-frame distance for this TIVCollection.
+        The inter-frame distance corresponds to the distance between
+        consecutive TIVs in the collection.
+        :param distance_type: Type of distance metric to use. Possible values
+        are 'euclidean' and 'cosine'. Defaults to 'euclidean'.
+        :return: An array containing the distances between consecutive TIVs.
+        """
+        distances = np.zeros(len(self.tivlist) - 1)
+
+        for i in range(len(self.tivlist) - 1):
+            tiv1 = self.tivlist[i]
+            tiv2 = self.tivlist[i + 1]
+
+            if distance_type == "euclidean":
+                distances[i] = TIV.euclidean(tiv1, tiv2)
+            elif distance_type == "cosine":
+                if np.any(tiv1.vector) and np.any(tiv2.vector):
+                    distances[i] = TIV.cosine(tiv1, tiv2)
+
+        return distances
