@@ -407,3 +407,24 @@ class TIVCollection(TIV):
         if pitch_shift > 5:
             pitch_shift = pitch_shift - 12
         return pitch_shift, np.min(compatibilities)
+
+    def tonal_dispersion(self, distance_type="euclidean"):
+        """
+        Compute distance to the tonal center TIV of each TIV in the collection.
+        :param distance_type: Type of distance metric to use. Possible values
+        are 'euclidean' and 'cosine'. Defaults to 'euclidean'.
+        :return: An array containing the tonal dispersion of each TIV
+        """
+        tonal_center = np.mean(self.vectors, axis=0)
+        tonal_center = TIV(1, tonal_center)
+
+        tonal_disp = np.zeros(len(self.tivlist))
+
+        for idx, tiv in enumerate(self.tivlist):
+            if distance_type == "euclidean":
+                tonal_disp[idx] = TIV.euclidean(tiv, tonal_center)
+            elif distance_type == "cosine":
+                if np.any(tiv.vector) and np.any(tonal_center.vector):
+                    tonal_disp[idx] = TIV.cosine(tiv, tonal_center)
+
+        return np.array(tonal_disp)
