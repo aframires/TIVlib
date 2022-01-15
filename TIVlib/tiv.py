@@ -413,7 +413,7 @@ class TIVCollection(TIV):
         Compute distance to the tonal center TIV of each TIV in the collection.
         :param distance_type: Type of distance metric to use. Possible values
         are 'euclidean' and 'cosine'. Defaults to 'euclidean'.
-        :return: An array containing the tonal dispersion of each TIV
+        :return: An array containing the tonal dispersion of each TIV.
         """
         tonal_center = np.mean(self.vectors, axis=0)
         tonal_center = TIV(1, tonal_center)
@@ -427,4 +427,27 @@ class TIVCollection(TIV):
                 if np.any(tiv.vector) and np.any(tonal_center.vector):
                     tonal_disp[idx] = TIV.cosine(tiv, tonal_center)
 
-        return np.array(tonal_disp)
+        return tonal_disp
+
+    def inter_frame_distance(self, distance_type="euclidean"):
+        """
+        Compute the inter-frame distance for this TIVCollection.
+        The inter-frame distance corresponds to the distance between
+        consecutive TIVs in the collection.
+        :param distance_type: Type of distance metric to use. Possible values
+        are 'euclidean' and 'cosine'. Defaults to 'euclidean'.
+        :return: An array containing the distances between consecutive TIVs.
+        """
+        distances = np.zeros(len(self.tivlist) - 1)
+
+        for i in range(len(self.tivlist) - 1):
+            tiv1 = self.tivlist[i]
+            tiv2 = self.tivlist[i + 1]
+
+            if distance_type == "euclidean":
+                distances[i] = TIV.euclidean(tiv1, tiv2)
+            elif distance_type == "cosine":
+                if np.any(tiv1.vector) and np.any(tiv2.vector):
+                    distances[i] = TIV.cosine(tiv1, tiv2)
+
+        return distances
