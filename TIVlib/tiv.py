@@ -172,14 +172,29 @@ class TIV:
     def mags(self):
         return np.abs(self.vector)
 
-    def diatonicity(self):
-        return self.mags()[4] / self.weights[4]
+    def __coefficient_mag(self, k):
+        if k < 0 or k > 5:
+            raise ValueError('k must be between 0 and 5')
 
-    def wholetoneness(self):
-        return self.mags()[5] / self.weights[5]
+        return self.mags()[k] / self.weights[k]
 
     def chromaticity(self):
-        return self.mags()[0] / self.weights[0]
+        return self.__coefficient_mag(0)
+
+    def dyadicity(self):
+        return self.__coefficient_mag(1)
+
+    def triadicity(self):
+        return self.__coefficient_mag(2)
+
+    def dim_quality(self):
+        return self.__coefficient_mag(3)
+
+    def diatonicity(self):
+        return self.__coefficient_mag(4)
+
+    def wholetoneness(self):
+        return self.__coefficient_mag(5)
 
     def plot_tiv(self, title=None):
         """
