@@ -5,7 +5,13 @@ epsilon = np.finfo(float).eps
 
 class TIV:
 
-    weights = [3, 8, 11.5, 15, 14.5, 7.5]
+    DEFAULT_DATA_TYPE = "audio"
+
+    weight_sets = {
+        'audio': [3, 8, 11.5, 15, 14.5, 7.5],
+        'symbolic': [2, 11, 17, 16, 19, 7]
+    }
+
     shaath_profiles = [
         [0.0507767 + 0.0969534j, 0.776472 + 0.267636j, 0.948956 + 0.251339j, -0.16524 + -0.569966j, 1.53228 + 1.09356j,
          -0.0203655 + -8.91606e-06j],
@@ -109,9 +115,13 @@ class TIV:
     key_labels = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B', 'c', 'db', 'd', 'eb', 'e', 'f', 'gb',
                   'g', 'ab', 'a', 'bb', 'b']
 
-    def __init__(self, energy, vector):
+    def __init__(self, energy, vector, data_type=DEFAULT_DATA_TYPE):
+        TIV._validate_data_type(data_type)
+
         self.energy = energy
         self.vector = vector
+
+        self.weights = self.weight_sets[data_type]
 
     def __add__(self, other):
         return self.combine(other)
@@ -129,12 +139,19 @@ class TIV:
         return self.vector, self.energy
 
     @classmethod
-    def from_pcp(cls, pcp):
+    def _validate_data_type(cls, data_type):
+        if data_type not in TIV.weight_sets:
+            raise KeyError("Data type must be one of: 'audio', 'symbolic'")
+
+    @classmethod
+    def from_pcp(cls, pcp, data_type=DEFAULT_DATA_TYPE):
+        TIV._validate_data_type(data_type)
+
         fft = np.fft.rfft(pcp, n=12)
         energy = fft[0]
         vector = fft[1:7]
         if energy != 0:
-            vector = ((vector / energy) * cls.weights)
+            vector = ((vector / energy) * cls.weight_sets[data_type])
         return cls(energy, vector)
 
     def phases(self):
@@ -334,16 +351,22 @@ class TIVCollection(TIV):
     """
     Class to handle lists of TIV. To handle with ease compatibility between audio excerpts
     """
-    def __init__(self, tivlist):
+    def __init__(self, tivlist, data_type=TIV.DEFAULT_DATA_TYPE):
         """
         The constructor of the class. Takes a list of TIV vectors
         :param tivlist: A list containing all the tivs of an audio
+        :param data_type: Data type for determining the correct set of weights
+        to use. Can be one of 'audio' or 'symbolic'. Defaults to 'audio'.
         """
+        TIV._validate_data_type(data_type)
+
         if not all([isinstance(tivi, TIV) for tivi in tivlist]):
             raise TypeError("Some element in the list is not a TIV object")
         self.tivlist = tivlist
         self.energies = np.array([i.energy for i in tivlist])
         self.vectors = np.array([i.vector for i in tivlist])
+
+        self.weights = self.weight_sets[data_type]
 
     def __getitem__(self, item):
         return self.tivlist[item]
@@ -355,12 +378,16 @@ class TIVCollection(TIV):
         return self.tivlist
 
     @classmethod
-    def from_pcp(cls, pcp):
+    def from_pcp(cls, pcp, data_type=TIV.DEFAULT_DATA_TYPE):
         """
         Get TIVs from pcp, as the original method
         :param pcp: 12xN vector containing N pcps
+        :param data_type: Data type for determining the correct set of weights
+        to use. Can be one of 'audio' or 'symbolic'. Defaults to 'audio'.
         :return: TIVCollection object
         """
+        TIV._validate_data_type(data_type)
+
         if pcp.shape[0] != 12:
             raise TypeError("Vector is not compatible with PCP")
         fft = np.fft.rfft(pcp, n=12, axis=0)
@@ -368,7 +395,7 @@ class TIVCollection(TIV):
             fft = fft[:, np.newaxis]
         energy = fft[0, :] + epsilon
         vector = fft[1:7, :]
-        vector = ((vector / energy) * np.array(cls.weights)[:, np.newaxis])
+        vector = ((vector / energy) * np.array(cls.weight_sets[data_type])[:, np.newaxis])
         return cls([TIV(energy[i], vector[:, i]) for i in range(len(energy))])
 
     def get_12_transposes(self):
